@@ -49,24 +49,27 @@ void SKSEMessageListener(SKSE::MessagingInterface::Message* a_msg)
 	case SKSE::MessagingInterface::kPostLoadGame:
 	case SKSE::MessagingInterface::kNewGame:
 	{
-		// A save load (or a brand new game) is exactly when the retroactive catch-up needs to
-		// run: it is idempotent (see Leveling::ApplyCatchUp's own header comment), so calling
-		// it unconditionally here - on every load, not just the first - is safe and self-
-		// correcting rather than needing its own "has this run yet" tracking on top of
-		// Persistence's own running total.
-		logger::debug("{} received; running the retroactive catch-up pass",
+		// A save load (or a brand new game) is exactly when the retroactive catch-up and the
+		// starting-carry-weight top-up both need to run: both are idempotent (see
+		// Leveling::ApplyCatchUp's and Leveling::ApplyStartingCarryWeight's own header
+		// comments), so calling them unconditionally here - on every load, not just the first -
+		// is safe and self-correcting rather than needing their own "has this run yet" tracking
+		// on top of Persistence's own running totals.
+		logger::debug("{} received; running the retroactive catch-up and starting-carry-weight passes",
 			a_msg->type == SKSE::MessagingInterface::kNewGame ? "kNewGame" : "kPostLoadGame");
 
 		RE::PlayerCharacter* player = RE::PlayerCharacter::GetSingleton();
 
 		if (!player)
 		{
-			logger::error("{}: RE::PlayerCharacter::GetSingleton() returned null; could not run the catch-up pass",
+			logger::error("{}: RE::PlayerCharacter::GetSingleton() returned null; could not run the "
+						  "catch-up or starting-carry-weight passes",
 				a_msg->type == SKSE::MessagingInterface::kNewGame ? "kNewGame" : "kPostLoadGame");
 
 			break;
 		}
 
+		Leveling::ApplyStartingCarryWeight(player, /* a_manualTrigger = */ false);
 		Leveling::ApplyCatchUp(player, /* a_manualTrigger = */ false);
 
 		break;

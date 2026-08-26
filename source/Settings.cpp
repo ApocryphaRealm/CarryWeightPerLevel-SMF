@@ -27,6 +27,8 @@ namespace settings
 			float carryWeightPerLevel;
 			bool enableCatchUp;
 			float catchUpBonusPerLevel;
+			bool enableStartingCarryWeight;
+			float startingCarryWeight;
 		};
 
 		Defaults defaults;
@@ -39,6 +41,8 @@ namespace settings
 			defaults.carryWeightPerLevel = leveling::carryWeightPerLevel;
 			defaults.enableCatchUp = leveling::enableCatchUp;
 			defaults.catchUpBonusPerLevel = leveling::catchUpBonusPerLevel;
+			defaults.enableStartingCarryWeight = leveling::enableStartingCarryWeight;
+			defaults.startingCarryWeight = leveling::startingCarryWeight;
 		}
 
 		// One key a Save() is about to write. Queued rather than written on the spot so the
@@ -340,6 +344,8 @@ namespace settings
 				carryWeightPerLevel = Read<float>(c, "fCarryWeightPerLevel:Leveling", carryWeightPerLevel);
 				enableCatchUp = Read<bool>(c, "bEnableCatchUp:Leveling", enableCatchUp);
 				catchUpBonusPerLevel = Read<float>(c, "fCatchUpBonusPerLevel:Leveling", catchUpBonusPerLevel);
+				enableStartingCarryWeight = Read<bool>(c, "bEnableStartingCarryWeight:Leveling", enableStartingCarryWeight);
+				startingCarryWeight = Read<float>(c, "fStartingCarryWeight:Leveling", startingCarryWeight);
 			}
 		}
 	}
@@ -368,6 +374,8 @@ namespace settings
 			add("fCarryWeightPerLevel:Leveling", carryWeightPerLevel);
 			add("bEnableCatchUp:Leveling", enableCatchUp);
 			add("fCatchUpBonusPerLevel:Leveling", catchUpBonusPerLevel);
+			add("bEnableStartingCarryWeight:Leveling", enableStartingCarryWeight);
+			add("fStartingCarryWeight:Leveling", startingCarryWeight);
 		}
 
 		if (!iniSettingCollection->ReadFromFile(a_iniFileName))
@@ -419,6 +427,8 @@ namespace settings
 		ok &= WriteFloat(kLevelingSection, "fCarryWeightPerLevel", leveling::carryWeightPerLevel);
 		ok &= WriteBool(kLevelingSection, "bEnableCatchUp", leveling::enableCatchUp);
 		ok &= WriteFloat(kLevelingSection, "fCatchUpBonusPerLevel", leveling::catchUpBonusPerLevel);
+		ok &= WriteBool(kLevelingSection, "bEnableStartingCarryWeight", leveling::enableStartingCarryWeight);
+		ok &= WriteFloat(kLevelingSection, "fStartingCarryWeight", leveling::startingCarryWeight);
 
 		ok &= FlushPendingWrites();
 
@@ -444,6 +454,9 @@ namespace settings
 		leveling::carryWeightPerLevel = defaults.carryWeightPerLevel;
 		leveling::enableCatchUp = defaults.enableCatchUp;
 		leveling::catchUpBonusPerLevel = defaults.catchUpBonusPerLevel;
+
+		leveling::enableStartingCarryWeight = defaults.enableStartingCarryWeight;
+		leveling::startingCarryWeight = defaults.startingCarryWeight;
 	}
 
 	const std::string& GetIniPath() { return iniPath; }

@@ -32,4 +32,15 @@ namespace persistence
 	// the new running total). Takes effect immediately in memory; only actually reaches disk the
 	// next time the game itself saves, same as every other SKSE co-save plugin.
 	void SetTotalCatchUpGranted(float a_value);
+
+	// Same idea, tracking the starting-carry-weight feature (see Settings.h's
+	// leveling::enableStartingCarryWeight) instead - its own separate running total, so it never
+	// interacts with the catch-up total above. 0.0 for a character that has never had it applied
+	// (including one loaded before this plugin's co-save data existed at all, or after Revert
+	// cleared the in-memory value).
+	float GetTotalStartingCarryWeightApplied();
+
+	// Same contract as SetTotalCatchUpGranted() above, for the starting-carry-weight running
+	// total instead.
+	void SetTotalStartingCarryWeightApplied(float a_value);
 }

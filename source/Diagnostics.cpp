@@ -27,6 +27,11 @@ namespace diagnostics
 			std::uint16_t lastCatchUpLevel = 0;
 			float lastCatchUpAmount = 0.0F;
 			bool lastCatchUpWasManual = false;
+
+			std::uint64_t startingCarryWeightApplications = 0;
+			std::optional<clock::time_point> lastStartingCarryWeight;
+			float lastStartingCarryWeightAmount = 0.0F;
+			bool lastStartingCarryWeightWasManual = false;
 		};
 
 		State state;
@@ -59,10 +64,15 @@ namespace diagnostics
 					"\"enablePerLevelBonus\":{},"
 					"\"carryWeightPerLevel\":{:.2f},"
 					"\"enableCatchUp\":{},"
-					"\"catchUpBonusPerLevel\":{:.2f}"
+					"\"catchUpBonusPerLevel\":{:.2f},"
+					"\"enableStartingCarryWeight\":{},"
+					"\"startingCarryWeight\":{:.2f}"
 					"}},"
 					"\"catchUp\":{{"
 					"\"totalGranted\":{:.2f}"
+					"}},"
+					"\"startingCarryWeight\":{{"
+					"\"totalApplied\":{:.2f}"
 					"}},"
 					"\"levelUpBonus\":{{"
 					"\"count\":{},"
@@ -76,13 +86,22 @@ namespace diagnostics
 					"\"lastAmount\":{:.2f},"
 					"\"lastWasManual\":{},"
 					"{}"
+					"}},"
+					"\"startingCarryWeightApplications\":{{"
+					"\"count\":{},"
+					"\"lastAmount\":{:.2f},"
+					"\"lastWasManual\":{},"
+					"{}"
 					"}}"
 					"}}",
 					settings::leveling::enablePerLevelBonus ? "true" : "false",
 					settings::leveling::carryWeightPerLevel,
 					settings::leveling::enableCatchUp ? "true" : "false",
 					settings::leveling::catchUpBonusPerLevel,
+					settings::leveling::enableStartingCarryWeight ? "true" : "false",
+					settings::leveling::startingCarryWeight,
 					persistence::GetTotalCatchUpGranted(),
+					persistence::GetTotalStartingCarryWeightApplied(),
 					state.levelUpBonusesApplied,
 					state.lastLevelUpBonusLevel,
 					state.lastLevelUpBonusAmount,
@@ -91,7 +110,11 @@ namespace diagnostics
 					state.lastCatchUpLevel,
 					state.lastCatchUpAmount,
 					state.lastCatchUpWasManual ? "true" : "false",
-					SecondsAgoField("last", state.lastCatchUp));
+					SecondsAgoField("last", state.lastCatchUp),
+					state.startingCarryWeightApplications,
+					state.lastStartingCarryWeightAmount,
+					state.lastStartingCarryWeightWasManual ? "true" : "false",
+					SecondsAgoField("last", state.lastStartingCarryWeight));
 			}
 
 			a_write(a_sink, json.c_str());
@@ -127,8 +150,8 @@ namespace diagnostics
 		constexpr const char* descriptor =
 			"{"
 			"\"description\":\"Live Carry Weight Per Level state: current settings, the "
-			"retroactive catch-up's running total, and the last per-level-up bonus and "
-			"catch-up application.\","
+			"retroactive catch-up's and starting-carry-weight's running totals, and the last "
+			"per-level-up bonus, catch-up, and starting-carry-weight application.\","
 			"\"inputSchema\":{\"type\":\"object\",\"properties\":{}},"
 			"\"readOnly\":true"
 			"}";
@@ -164,5 +187,15 @@ namespace diagnostics
 		state.lastCatchUpAmount = a_amountGranted;
 		state.lastCatchUpWasManual = a_manualTrigger;
 		state.lastCatchUp = clock::now();
+	}
+
+	void RecordStartingCarryWeightApplied(float a_amountApplied, bool a_manualTrigger)
+	{
+		std::scoped_lock lock(mtx);
+
+		++state.startingCarryWeightApplications;
+		state.lastStartingCarryWeightAmount = a_amountApplied;
+		state.lastStartingCarryWeightWasManual = a_manualTrigger;
+		state.lastStartingCarryWeight = clock::now();
 	}
 }

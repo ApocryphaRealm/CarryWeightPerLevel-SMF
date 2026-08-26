@@ -1,8 +1,9 @@
 # Carry Weight Per Level - SMF Settings
 
-**Version 1.0.0** - the build's own version, starting fresh per this project's standing rule
+**Version 1.0.1** - the build's own version, starting fresh per this project's standing rule
 (`CLAUDE.md` rule 6: generated content starts at 1.0.0). This is an original mod, not a fork,
-so there is no upstream version to track.
+so there is no upstream version to track. 1.0.1 added a third feature (starting carry weight,
+below) and raised the per-level bonus's default from 5.0 to 20.0.
 
 A fresh, native SKSE plugin implementation of "carry weight scales with level", with a real
 SKSE Menu Framework settings page. Every value the design was inspired by was fixed and
@@ -28,15 +29,16 @@ save that already had levels).
 code or assets from the original mod at all. Game mechanics ("carry weight scales with
 level") are not copyrightable; only the original mod's own specific implementation is, and
 none of it is reused here. See `D:\Claude output\Mod Analysis` conventions - this repo
-started life via `D:\Claude output\analyze mods`, but as a from-scratch native build rather
+started life via `D:\Claude output\3. analyze mods`, but as a from-scratch native build rather
 than an SMF port of the original's own code, since the original had nothing but three fixed
 Papyrus scripts to port in the first place.
 
 ## What it does
 
 **Per-level bonus** (the core mechanic): every time the player levels up, add a configurable
-amount of carry weight - by default 5.0, the same rate vanilla itself grants for a Stamina
-level-up. Detected natively via CommonLibSSE-NG's `RE::LevelIncrease::Event` (see
+amount of carry weight - by default 20.0 (raised from an original default of 5.0, vanilla's
+own Stamina-level-up rate, so the bonus is actually noticeable over a playthrough). Detected
+natively via CommonLibSSE-NG's `RE::LevelIncrease::Event` (see
 `include/RE/L/LevelIncrease.h` in the vendored headers), a real engine event fired once per
 level actually gained - simpler and more reliable than the Story Manager's
 `OnStoryIncreaseLevel` event the original mod had to work around in Papyrus (which only fires
@@ -54,7 +56,22 @@ granted by now against a running total tracked in the save's own co-save data (S
 `SerializationInterface`), and only ever grants the (non-negative) difference - so it can never
 grant the same bonus twice, and (like the original) never removes carry weight.
 
-Both features can be turned off independently, and both bonus rates are independently
+**Starting carry weight** (new in 1.0.1, no equivalent in the original mod): sets carry weight
+to a specific configured total - by default 100.0 - independent of the per-level bonus and
+catch-up above. Where those two add an ongoing or one-time *bonus* on top of whatever carry
+weight the character already has, this is a flat *target*. It runs automatically the first
+time a save loads with the feature enabled, and is also available on demand via an "Apply now"
+button, for when the author changes the configured value later mid-playthrough. It uses the same
+idempotent-delta pattern as the retroactive catch-up (comparing the configured target against
+its own running total, tracked separately via the same co-save mechanism, and applying only
+the difference via `RE::ActorValueOwner::ModActorValue(RE::ActorValue::kCarryWeight, ...)` -
+the same call the other two features already use, so it layers on top of whatever they and
+vanilla have already contributed rather than overwriting it), but unlike catch-up, a decrease
+IS honoured: lowering the configured value and pressing "Apply now" actually moves carry
+weight down to match, since this setting is a deliberate target rather than a forgiving
+top-up.
+
+All three features can be turned off independently, and all three amounts are independently
 configurable, all from the settings page under SKSE Menu Framework's Mod Control Panel.
 
 ## Settings persistence
@@ -63,9 +80,9 @@ configurable, all from the settings page under SKSE Menu Framework's Mod Control
 from INI` both target this mod's own shipped `CarryWeightPerLevel.ini`. A saved change survives
 to the next game load (`CLAUDE.md` rule 16) - the INI is rewritten with plain file I/O, not
 `WritePrivateProfileString`, since Mod Organizer 2's usvfs does not reliably redirect the
-latter. The retroactive catch-up's own running total is separate from the INI entirely - it is
-per-character save data (see above), not a global setting, so it is unaffected by `Restore
-defaults`, `Save`, or `Reload from INI`.
+latter. The retroactive catch-up's and starting-carry-weight's own running totals are separate
+from the INI entirely - they are per-character save data (see above), not global settings, so
+they are unaffected by `Restore defaults`, `Save`, or `Reload from INI`.
 
 ## Debugging
 
@@ -97,5 +114,5 @@ originally-authored material.
 
 **First attempt, not yet tested in game.** Built and reviewed for correctness against the
 vendored CommonLibSSE-NG headers, but the level-up hook and the catch-up math have not been
-exercised on a running save yet. Not packaged into `current test builds`, not finalized - per
+exercised on a running save yet. Not packaged into `7. current test builds`, not finalized - per
 the task this was built under, that is the author's call once he has reviewed it.

@@ -23,4 +23,9 @@ namespace diagnostics
 	// ApplyCatchUp actually granted a non-zero top-up (a_manualTrigger distinguishes the
 	// automatic on-load pass from the settings page's "Recalculate now" button).
 	void RecordCatchUpApplied(std::uint16_t a_level, float a_amountGranted, bool a_manualTrigger);
+
+	// ApplyStartingCarryWeight actually applied a non-zero delta (a_manualTrigger distinguishes
+	// the automatic on-load pass from the settings page's "Apply now" button). a_amountApplied
+	// can be negative - see Leveling::ApplyStartingCarryWeight's own header comment for why.
+	void RecordStartingCarryWeightApplied(float a_amountApplied, bool a_manualTrigger);
 }

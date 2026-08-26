@@ -177,6 +177,31 @@ namespace UI
 			HelpMarker("Recalculates and applies the catch-up bonus right now, using the settings above. Safe to press more than once - it only ever tops up to the current target, it never grants twice.");
 		}
 
+		void RenderStartingCarryWeightSection()
+		{
+			using namespace settings::leveling;
+
+			ImGuiMCP::SeparatorText("Starting Carry Weight");
+
+			ImGuiMCP::Toggle("Enable starting carry weight", &enableStartingCarryWeight);
+			HelpMarker("Sets your carry weight to a specific target total, separate from the per-level bonus and catch-up above. Unlike those, changing this and pressing Apply now actually moves carry weight to match the new number - it can go up or down.");
+
+			NudgeableSlider("Starting carry weight", &startingCarryWeight, 0.0F, 500.0F, "%.1f", 5.0F);
+			HelpMarker("The target total this feature applies. Applied automatically the first time a save loads with this feature enabled, and any time you press Apply now afterward.");
+
+			ImGuiMCP::TextDisabled("Total starting carry weight applied so far: %.2f", persistence::GetTotalStartingCarryWeightApplied());
+
+			if (ImGuiMCP::Button("Apply now"))
+			{
+				OnMainThread([]() {
+					Leveling::ApplyStartingCarryWeight(RE::PlayerCharacter::GetSingleton(), /* a_manualTrigger = */ true);
+
+					statusMessage = "Starting carry weight applied. See the log for what (if anything) changed.";
+				});
+			}
+			HelpMarker("Applies the starting carry weight target right now, using the setting above. Safe to press more than once - it only ever applies the difference between the current target and what has already been applied, in either direction.");
+		}
+
 		void RenderDebugSection()
 		{
 			using namespace settings;
@@ -223,7 +248,7 @@ namespace UI
 
 				statusMessage = "Defaults restored. Press Save to keep them.";
 			}
-			HelpMarker("Puts every setting back to the value it has on a fresh install. Nothing is written until you press Save. Does not touch the catch-up running total - that is tracked separately, per character, in your save.");
+			HelpMarker("Puts every setting back to the value it has on a fresh install. Nothing is written until you press Save. Does not touch the catch-up or starting-carry-weight running totals - those are tracked separately, per character, in your save.");
 
 			if (!statusMessage.empty())
 			{
@@ -269,6 +294,9 @@ namespace UI
 		ImGuiMCP::Spacing();
 
 		RenderCatchUpSection();
+		ImGuiMCP::Spacing();
+
+		RenderStartingCarryWeightSection();
 		ImGuiMCP::Spacing();
 
 		RenderDebugSection();

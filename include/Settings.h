@@ -43,12 +43,11 @@ namespace settings
 		// a fixed, non-configurable GlobalVariable - here it is a real setting.
 		inline bool enablePerLevelBonus = true;
 
-		// Carry weight added per level gained. The original's own GlobalVariable had no
-		// documented default visible from its Papyrus source (it lives only in the ESP), so
-		// this defaults to 5.0 - the same per-level rate vanilla Skyrim itself grants for a
-		// Stamina level-up, which is a reasonable, familiar starting point rather than an
-		// arbitrary guess.
-		inline float carryWeightPerLevel = 5.0F;
+		// Carry weight added per level gained. Originally defaulted to 5.0 (vanilla's own
+		// Stamina-level-up rate); raised to 20.0 per the author's direct request so the bonus is
+		// actually noticeable over a playthrough rather than matching what a Stamina-focused
+		// build already gets for free.
+		inline float carryWeightPerLevel = 20.0F;
 
 		// Native re-implementation of the original mod's one-time "retroactive adjustment"
 		// potion (added in its own version 0.4, for characters who had already leveled up
@@ -67,5 +66,22 @@ namespace settings
 		// independently (e.g. a lower catch-up rate to avoid a large single jump in carry
 		// weight on an already high-level existing character).
 		inline float catchUpBonusPerLevel = 5.0F;
+
+		// Sets the player's carry weight to a specific configured total, independent of the
+		// per-level bonus and catch-up above. Unlike those two (which add an ongoing or
+		// one-time bonus on top of whatever carry weight the character already has), this is
+		// a flat target - "the player should have this much carry weight from this feature".
+		// Idempotent the same way catch-up is: Leveling::ApplyStartingCarryWeight() compares
+		// this value against persistence::GetTotalStartingCarryWeightApplied() and applies
+		// only the difference, so it is safe to apply automatically on every load and safe
+		// for the settings page's "Apply now" button to press repeatedly - it never stacks or
+		// double-applies. Unlike catch-up, a decrease IS honoured (the delta can be negative):
+		// this setting is a deliberate, the author-controlled target value, not a forgiving top-up,
+		// so changing it and pressing "Apply now" is expected to actually move carry weight to
+		// match the new number, not just top up toward it.
+		inline bool enableStartingCarryWeight = true;
+
+		// Default 100.0 per the author's direct request.
+		inline float startingCarryWeight = 100.0F;
 	}
 }

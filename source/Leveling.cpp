@@ -164,4 +164,61 @@ namespace Leveling
 
 		diagnostics::RecordCatchUpApplied(level, delta, a_manualTrigger);
 	}
+
+	void ApplyStartingCarryWeight(RE::Actor* a_player, bool a_manualTrigger)
+	{
+		if (!a_player)
+		{
+			logger::error("ApplyStartingCarryWeight: null player ({})", a_manualTrigger ? "manual" : "automatic");
+
+			return;
+		}
+
+		if (!settings::leveling::enableStartingCarryWeight)
+		{
+			logger::debug("ApplyStartingCarryWeight: starting carry weight is disabled; nothing to do ({})",
+				a_manualTrigger ? "manual" : "automatic");
+
+			return;
+		}
+
+		const float desiredTotal = settings::leveling::startingCarryWeight;
+		const float alreadyApplied = persistence::GetTotalStartingCarryWeightApplied();
+		const float delta = desiredTotal - alreadyApplied;
+
+		logger::debug("ApplyStartingCarryWeight ({}): desired total {:.2f}, already applied {:.2f}, delta {:.2f}",
+			a_manualTrigger ? "manual" : "automatic", desiredTotal, alreadyApplied, delta);
+
+		if (delta == 0.0F)
+		{
+			logger::debug("ApplyStartingCarryWeight: nothing to apply - the running total already matches "
+						  "the configured starting carry weight");
+
+			return;
+		}
+
+		RE::ActorValueOwner* avOwner = a_player->AsActorValueOwner();
+
+		if (!avOwner)
+		{
+			logger::error("ApplyStartingCarryWeight: player's ActorValueOwner interface was null; "
+						  "could not apply the starting carry weight");
+
+			return;
+		}
+
+		// ModActorValue, not SetBaseActorValue/SetActorValue: this project's own carry-weight code
+		// (the per-level bonus above, and ApplyCatchUp) already reads/writes carry weight this way,
+		// and it is additive - it layers the delta on top of whatever vanilla, this mod's other two
+		// features, and any other mod have already contributed to the same actor value, rather than
+		// overwriting all of that outright the way a direct Set call would (CLAUDE.md rule 24).
+		avOwner->ModActorValue(RE::ActorValue::kCarryWeight, delta);
+		persistence::SetTotalStartingCarryWeightApplied(desiredTotal);
+
+		logger::info("ApplyStartingCarryWeight: applied {:.2f} carry weight ({} starting carry weight, target "
+					 "{:.2f}, running total now {:.2f})",
+			delta, a_manualTrigger ? "manual" : "automatic", settings::leveling::startingCarryWeight, desiredTotal);
+
+		diagnostics::RecordStartingCarryWeightApplied(delta, a_manualTrigger);
+	}
 }

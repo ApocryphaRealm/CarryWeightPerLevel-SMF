@@ -19,18 +19,23 @@ namespace persistence
 			       static_cast<std::uint32_t>(static_cast<unsigned char>(a_d));
 		}
 
-		// This plugin's unique co-save signature, and the one record type it writes.
+		// This plugin's unique co-save signature, and the two record types it writes - one per
+		// idempotent running total (catch-up, and starting carry weight).
 		constexpr std::uint32_t kPluginSignature = MakeSignature('C', 'W', 'P', 'L');
 		constexpr std::uint32_t kCatchUpRecordType = MakeSignature('C', 'A', 'T', 'C');
 		constexpr std::uint32_t kCatchUpRecordVersion = 1;
+		constexpr std::uint32_t kStartingCarryWeightRecordType = MakeSignature('S', 'T', 'R', 'T');
+		constexpr std::uint32_t kStartingCarryWeightRecordVersion = 1;
 
 		float totalCatchUpGranted = 0.0F;
+		float totalStartingCarryWeightApplied = 0.0F;
 
 		void OnGameSaved(SKSE::SerializationInterface* a_intfc)
 		{
 			if (!a_intfc)
 			{
-				logger::error("OnGameSaved: null serialization interface; the catch-up total was not written to this save");
+				logger::error("OnGameSaved: null serialization interface; the catch-up and starting-carry-weight "
+							  "totals were not written to this save");
 
 				return;
 			}
@@ -50,23 +55,44 @@ namespace persistence
 			}
 
 			logger::debug("OnGameSaved: wrote catch-up total {:.2f}", totalCatchUpGranted);
+
+			if (!a_intfc->OpenRecord(kStartingCarryWeightRecordType, kStartingCarryWeightRecordVersion))
+			{
+				logger::error("OnGameSaved: OpenRecord failed for the starting-carry-weight total; "
+							  "it will not be written to this save");
+
+				return;
+			}
+
+			if (!a_intfc->WriteRecordData(totalStartingCarryWeightApplied))
+			{
+				logger::error("OnGameSaved: failed to write the starting-carry-weight total ({:.2f})",
+					totalStartingCarryWeightApplied);
+
+				return;
+			}
+
+			logger::debug("OnGameSaved: wrote starting-carry-weight total {:.2f}", totalStartingCarryWeightApplied);
 		}
 
 		void OnGameLoaded(SKSE::SerializationInterface* a_intfc)
 		{
 			if (!a_intfc)
 			{
-				logger::error("OnGameLoaded: null serialization interface; assuming no catch-up has been granted yet");
+				logger::error("OnGameLoaded: null serialization interface; assuming no catch-up or "
+							  "starting-carry-weight totals have been applied yet");
 
 				totalCatchUpGranted = 0.0F;
+				totalStartingCarryWeightApplied = 0.0F;
 
 				return;
 			}
 
 			// Reset first: a save with no record of ours at all (this plugin was installed
-			// after that save was made) should read back as "nothing granted yet", not
+			// after that save was made) should read back as "nothing granted/applied yet", not
 			// whatever the previously loaded save happened to leave behind.
 			totalCatchUpGranted = 0.0F;
+			totalStartingCarryWeightApplied = 0.0F;
 
 			std::uint32_t type = 0;
 			std::uint32_t version = 0;
@@ -74,33 +100,57 @@ namespace persistence
 
 			while (a_intfc->GetNextRecordInfo(type, version, length))
 			{
-				if (type != kCatchUpRecordType)
+				if (type == kCatchUpRecordType)
+				{
+					if (version != kCatchUpRecordVersion)
+					{
+						logger::warn("OnGameLoaded: catch-up record is version {}, expected {}; treating it as absent",
+							version, kCatchUpRecordVersion);
+
+						continue;
+					}
+
+					float value = 0.0F;
+
+					if (a_intfc->ReadRecordData(value) != sizeof(value))
+					{
+						logger::warn("OnGameLoaded: catch-up record was the wrong size; treating it as absent");
+
+						continue;
+					}
+
+					totalCatchUpGranted = value;
+
+					logger::debug("OnGameLoaded: read catch-up total {:.2f}", totalCatchUpGranted);
+				}
+				else if (type == kStartingCarryWeightRecordType)
+				{
+					if (version != kStartingCarryWeightRecordVersion)
+					{
+						logger::warn("OnGameLoaded: starting-carry-weight record is version {}, expected {}; "
+									 "treating it as absent",
+							version, kStartingCarryWeightRecordVersion);
+
+						continue;
+					}
+
+					float value = 0.0F;
+
+					if (a_intfc->ReadRecordData(value) != sizeof(value))
+					{
+						logger::warn("OnGameLoaded: starting-carry-weight record was the wrong size; treating it as absent");
+
+						continue;
+					}
+
+					totalStartingCarryWeightApplied = value;
+
+					logger::debug("OnGameLoaded: read starting-carry-weight total {:.2f}", totalStartingCarryWeightApplied);
+				}
+				else
 				{
 					logger::trace("OnGameLoaded: skipping unrecognized record type {:#010x}", type);
-
-					continue;
 				}
-
-				if (version != kCatchUpRecordVersion)
-				{
-					logger::warn("OnGameLoaded: catch-up record is version {}, expected {}; treating it as absent",
-						version, kCatchUpRecordVersion);
-
-					continue;
-				}
-
-				float value = 0.0F;
-
-				if (a_intfc->ReadRecordData(value) != sizeof(value))
-				{
-					logger::warn("OnGameLoaded: catch-up record was the wrong size; treating it as absent");
-
-					continue;
-				}
-
-				totalCatchUpGranted = value;
-
-				logger::debug("OnGameLoaded: read catch-up total {:.2f}", totalCatchUpGranted);
 			}
 		}
 
@@ -110,9 +160,10 @@ namespace persistence
 			// the safe default so a stale value from the previous save can never leak into
 			// whichever save (or new game) comes next - OnGameLoaded supplies the real value
 			// if the next save actually has one.
-			logger::debug("OnRevert: clearing the in-memory catch-up total");
+			logger::debug("OnRevert: clearing the in-memory catch-up and starting-carry-weight totals");
 
 			totalCatchUpGranted = 0.0F;
+			totalStartingCarryWeightApplied = 0.0F;
 		}
 	}
 
@@ -123,7 +174,7 @@ namespace persistence
 		if (!serialization)
 		{
 			logger::error("Init: SKSE::GetSerializationInterface() returned null; the retroactive "
-						  "catch-up feature will not persist across saves this session");
+						  "catch-up and starting-carry-weight features will not persist across saves this session");
 
 			return;
 		}
@@ -146,5 +197,17 @@ namespace persistence
 		totalCatchUpGranted = a_value;
 
 		logger::debug("SetTotalCatchUpGranted: running total is now {:.2f} (persists on the next game save)", totalCatchUpGranted);
+	}
+
+	float GetTotalStartingCarryWeightApplied()
+	{
+		return totalStartingCarryWeightApplied;
+	}
+
+	void SetTotalStartingCarryWeightApplied(float a_value)
+	{
+		totalStartingCarryWeightApplied = a_value;
+
+		logger::debug("SetTotalStartingCarryWeightApplied: running total is now {:.2f} (persists on the next game save)", totalStartingCarryWeightApplied);
 	}
 }

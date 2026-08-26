@@ -53,4 +53,27 @@ namespace Leveling
 	// a_manualTrigger only affects logging/diagnostics (which of the two call sites this was),
 	// not the math.
 	void ApplyCatchUp(RE::Actor* a_player, bool a_manualTrigger);
+
+	// Sets the player's carry weight to settings::leveling::startingCarryWeight - a flat, one-time
+	// target, independent of the per-level bonus and catch-up above (see Settings.h's own
+	// comment on leveling::enableStartingCarryWeight for why this is a "set to X" feature rather
+	// than an additive bonus like the other two).
+	//
+	// Idempotent the same way ApplyCatchUp() is, and applies the difference via the same
+	// RE::ActorValueOwner::ModActorValue(RE::ActorValue::kCarryWeight, ...) call the other two
+	// features already use (CLAUDE.md rule 24 - reuse the API this mod already validated for
+	// reading/writing carry weight rather than reaching for a blind guess like SetActorValue or
+	// SetBaseActorValue, which would stomp on whatever the per-level bonus/catch-up/vanilla have
+	// already contributed to the same actor value instead of layering on top of it): computes the
+	// delta between settings::leveling::startingCarryWeight and
+	// persistence::GetTotalStartingCarryWeightApplied(), and applies only that delta. Safe to call
+	// unconditionally on every save load, and safe for the settings page's "Apply now" button to
+	// call as many times as the player likes - it never stacks or double-applies. Unlike
+	// ApplyCatchUp(), the delta here CAN be negative: if the author lowers the configured value and
+	// re-triggers, carry weight actually moves down to match, since this setting is a deliberate
+	// target rather than a forgiving top-up.
+	//
+	// a_manualTrigger only affects logging/diagnostics (which of the two call sites this was),
+	// not the math.
+	void ApplyStartingCarryWeight(RE::Actor* a_player, bool a_manualTrigger);
 }
