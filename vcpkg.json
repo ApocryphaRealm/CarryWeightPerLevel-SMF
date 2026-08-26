@@ -1,0 +1,11 @@
+{
+    "name": "carryweightperlevel",
+    "version-string": "1.0.0",
+    "description": "Carry Weight Per Level - SMF Settings: a fresh native re-implementation of the 'carry weight scales with level' mechanic (inspired by Increase Carry-Weight on Level-Up, Nexus 2654), with a configurable SKSE Menu Framework settings page",
+    "homepage": "https://github.com/ApocryphaRealm/CarryWeightPerLevel-SMF",
+    "license": "MIT",
+    "dependencies": [
+        "commonlibsse-ng"
+    ],
+    "builtin-baseline": "8d3649ba34aab36914ddd897958599aa0a91b08e"
+}
