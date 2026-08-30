@@ -115,4 +115,4 @@ originally-authored material.
 **First attempt, not yet tested in game.** Built and reviewed for correctness against the
 vendored CommonLibSSE-NG headers, but the level-up hook and the catch-up math have not been
 exercised on a running save yet. Not packaged into `7. current test builds`, not finalized - per
-the task this was built under, that is the author's call once he has reviewed it.
+the task this was built under, that is design call once he has reviewed it.
